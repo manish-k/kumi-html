@@ -1,0 +1,39 @@
+#sprites-image
+{
+    display: none;
+}
+
+#game-wrapper
+{
+    display: inline-block;
+}
+
+canvas
+{
+    position: absolute;
+}
+
+.grad-layer
+{
+    z-index: 0;
+}
+
+.bground-layer
+{
+    z-index: 1;
+}
+
+.inter-layer
+{
+    z-index: 2;
+}
+
+.fground-layer
+{
+    z-index: 3;
+}
+
+.player-layer
+{
+    z-index: 3;
+}
