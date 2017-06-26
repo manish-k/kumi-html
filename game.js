@@ -23,6 +23,7 @@
 
         // scroll amount of screen
         this.scrollX = 0;
+        this.freezeScroll = false
 
         this.player = null;
 
@@ -156,7 +157,7 @@
             while(objX < Game.dimensions.MAP_WIDTH){
                 var scaling = 1;
                 var motionCoeff = Game.layersMotionCoeff.INTER
-                if(select == 0){ 
+                if(select == 0){
                     sprite = Game.spritesDef.WORLD.AIRCRAFT;
                     scaling = Game.scaling.AIRCRAFT;
                 }
@@ -224,6 +225,14 @@
                                     Game.scaling.PLAYER);
             this.player.setAnimation('IDLE');
             this.layerObjects[Game.layers.PLAYER].push(this.player);
+
+            this.enemy = new Enemy(this.layerCtx[Game.layers.PLAYER],
+                                    Game.layers.PLAYER,
+                                    Game.dimensions.WIDTH - 100,
+                                    Game.dimensions.HEIGHT - 40,
+                                    Game.dimensions.HEIGHT - 40,
+                                    Game.scaling.PLAYER);
+            this.layerObjects[Game.layers.PLAYER].push(this.enemy);
 
             this.startListeners()
             this.update();
@@ -311,6 +320,7 @@
 
                     Game.spritesDef['WORLD'] = {};
                     Game.spritesDef['PLAYER'] = {};
+                    Game.spritesDef['ENEMY'] = {};
 
                     // world sprites
                     Game.spritesDef['WORLD']['AIRCRAFT'] = spritesDef['aircraft'];
@@ -325,11 +335,19 @@
                     Game.spritesDef['WORLD']['TRACK'] = spritesDef['track'];
 
                     // player sprites
-                    Game.spritesDef['PLAYER']['IDLE'] = spritesDef['idle'];
-                    Game.spritesDef['PLAYER']['WALK'] = spritesDef['walk'];
-                    Game.spritesDef['PLAYER']['CROUCH'] = spritesDef['crouch'];
-                    Game.spritesDef['PLAYER']['JUMP'] = spritesDef['jump'];
-                    Game.spritesDef['PLAYER']['DIR_JUMP'] = spritesDef['fw_jump'];
+                    Game.spritesDef['PLAYER']['IDLE'] = spritesDef['chunli_idle'];
+                    Game.spritesDef['PLAYER']['WALK'] = spritesDef['chunli_walk'];
+                    Game.spritesDef['PLAYER']['CROUCH'] = spritesDef['chunli_crouch'];
+                    Game.spritesDef['PLAYER']['JUMP'] = spritesDef['chunli_jump'];
+                    Game.spritesDef['PLAYER']['DIR_JUMP'] = spritesDef['chunli_fw_jump'];
+
+                    // player sprites
+                    Game.spritesDef['ENEMY']['IDLE'] = spritesDef['blanka_idle'];
+                    Game.spritesDef['ENEMY']['WALK'] = spritesDef['blanka_walk'];
+                    Game.spritesDef['ENEMY']['CROUCH'] = spritesDef['blanka_crouch'];
+                    Game.spritesDef['ENEMY']['ROLL_ATTACK'] = spritesDef['blanka_roll'];
+                    Game.spritesDef['ENEMY']['SHOCK'] = spritesDef['blanka_shock'];
+                    Game.spritesDef['ENEMY']['HEAVY_PUNCH'] = spritesDef['blanka_heavy_punch'];
                     this.loadImages();
                 }
             }.bind(this);
@@ -344,52 +362,9 @@
             delta = currentTime - (this.time || currentTime);
             this.time = currentTime;
 
-            /*
-            this.canvasCtx.fillStyle = Game.config.BGROUND_COLOR;
-            this.canvasCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            var scaling = Game.dimensions.SPRITES_SCALE;
-
-            // Sky
-            var skyFrame = Game.spritesDef['WORLD'].SKY.nFrames[0];
-            this.canvasCtx.drawImage(Game.spritesImage,
-                skyFrame.x, skyFrame.y,
-                skyFrame.w, skyFrame.h,
-                0, 0,
-                skyFrame.w * scaling, skyFrame.h * (scaling + 1));
-
-            // Track
-            var trackFrame = Game.spritesDef['WORLD'].TRACK.nFrames[0];
-            this.canvasCtx.drawImage(Game.spritesImage,
-                trackFrame.x, trackFrame.y,
-                trackFrame.w, trackFrame.h,
-                0, Game.dimensions.HEIGHT - trackFrame.h * scaling,
-                trackFrame.w * scaling, trackFrame.h * scaling);
-
-            // Aircraft
-            var aircraftFrame = Game.spritesDef['WORLD'].AIRCRAFT.nFrames[0];
-            this.canvasCtx.drawImage(Game.spritesImage,
-                aircraftFrame.x, aircraftFrame.y,
-                aircraftFrame.w, aircraftFrame.h,
-                0, Game.dimensions.HEIGHT - trackFrame.h * scaling - aircraftFrame.h * scaling,
-                aircraftFrame.w * scaling, aircraftFrame.h * scaling);
-            // Fence
-            var fenceStartFrame = Game.spritesDef['WORLD'].LEND_FENCE.nFrames[0];
-            var fenceEndFrame = Game.spritesDef['WORLD'].REND_FENCE.nFrames[0];
-            var fenceWarnFrame = Game.spritesDef['WORLD'].WARN_FENCE.nFrames[0];
-            var fenceFrame = Game.spritesDef['WORLD'].FENCE.nFrames[0] ;
-
-            for(var fencePosX = 0; fencePosX < Game.dimensions.WIDTH; fencePosX +=
-                fenceFrame.w * scaling){
-            this.canvasCtx.drawImage(Game.spritesImage,
-                fenceFrame.x, fenceFrame.y,
-                fenceFrame.w, fenceFrame.h,
-                0 + fencePosX, Game.dimensions.HEIGHT - trackFrame.h * scaling - fenceStartFrame.h * scaling,
-                fenceFrame.w * scaling, fenceFrame.h * scaling);
-            }
-
-            this.player.update(delta);
-            */
+            this.freezeScroll = true;
+            if(this.freezeScroll)
+                this.scrollX = 0;
 
             this.updateLayer(Game.layers.GRAD, delta);
             this.updateLayer(Game.layers.BGROUND, delta);
@@ -478,12 +453,12 @@
 
     Gradient.prototype = {
         update: function(delta){
-            this.draw(); 
+            this.draw();
 
             Game._instance.pendingUpdate[this.layerIndex] = false;
         },
         draw: function(){
-            this.canvasCtx.fillStyle = this.gradient; 
+            this.canvasCtx.fillStyle = this.gradient;
             this.canvasCtx.fillRect(0, 0, this.w, this.h);
         }
     };
@@ -569,6 +544,13 @@
         this.init();
     };
 
+    Player.config = {
+        JUMP_APEX: 200,
+        JUMP_DISTANCE: 300,
+        JUMP_DURATION: 900,
+        WALK_SPEED: 0.2
+    };
+
     Player.prototype = {
         init: function(){
             Player.animations = Game.spritesDef.PLAYER;
@@ -593,18 +575,26 @@
             var moveDirection = 1;
             if(this.flipped) moveDirection = -1;
 
+            if(Game._instance.freezeScroll) moveDirection = 0;
+
             if(inputState.UP){
                 this.jumping = true;
                 if(inputState.RIGHT){
                     if(this.animation != 'DIR_JUMP')
                         this.setAnimation('DIR_JUMP');
                         this.jumpXDirection = 1;
+                        this.reverseAnimation = false;
+                        if(this.flipped)
+                            this.reverseAnimation = true;
                     return;
                 }
                 else if(inputState.LEFT){
                     if(this.animation != 'DIR_JUMP')
                         this.setAnimation('DIR_JUMP');
                         this.jumpXDirection = -1;
+                        this.reverseAnimation = false;
+                        if(!this.flipped)
+                            this.reverseAnimation = true;
                     return;
                 }
                 if(this.animation != 'JUMP')
@@ -625,14 +615,14 @@
             }
 
             if(inputState.RIGHT){
-                this.vx = Player.config.WALK_SPEED * moveDirection;
+                this.vx = Player.config.WALK_SPEED * (moveDirection || 1);
                 if(this.flipped) this.flipped = !this.flipped;
 
                 if(this.animation != 'WALK')
                     this.setAnimation('WALK');
             }
             else if(inputState.LEFT){
-                this.vx = Player.config.WALK_SPEED * moveDirection;
+                this.vx = Player.config.WALK_SPEED * (moveDirection || -1);
                 if(!this.flipped) this.flipped = !this.flipped;
 
                 if(this.animation != 'WALK')
@@ -656,23 +646,39 @@
             var scrollX = -this.vx * delta;
             if(this.blX + this.avgWidth / 2 < Game.dimensions.WIDTH / 2 ||
                 this.blX + this.avgWidth / 2 > Game.dimensions.MAP_WIDTH -
-                Game.dimensions.WIDTH / 2
-            ){
-                scrollX = 0; 
-            } 
+                Game.dimensions.WIDTH / 2){
+                scrollX = 0;
+            }
+
+
+            if(Game._instance.freezeScroll){
+                scrollX = 0;
+                var enemy = Game._instance.enemy;
+                if(this.blX + this.totalScroll - enemy.blX >= 0){
+                    // enemy is on left hand side of player
+                    this.flipped = true;
+                }
+                else
+                    this.flipped = false;
+            }
 
             this.totalScroll += scrollX
             Game._instance.scrollX = scrollX;
 
             if(this.frameTime >= this.msPerFrame && !this.clampCurrentFrame){
                 this.frameTime = 0;
-                this.currentAnimFrame =
-                (this.currentAnimFrame + 1) % this.currentAnimData.nFrames.length;
+                if(this.reverseAnimation){
+                    this.currentAnimFrame =
+                    (this.currentAnimFrame - 1) % this.currentAnimData.nFrames.length;
+                    if(this.currentAnimFrame < 0)
+                        this.currentAnimFrame += this.currentAnimData.nFrames.length
+                }
+                else{
+                    this.currentAnimFrame =
+                    (this.currentAnimFrame + 1) % this.currentAnimData.nFrames.length;
+                }
             }
 
-            this.draw();
-        },
-        draw: function(){
             var frame;
             if(this.flipped){
                 frame = this.currentAnimData.fFrames[this.currentAnimFrame];
@@ -681,16 +687,32 @@
                 frame = this.currentAnimData.nFrames[this.currentAnimFrame];
             }
 
-            this.canvasCtx.save();
-
             var scaling = this.scale;
 
+            // handling screen sliding freeze
+            if(Game._instance.freezeScroll && this.blX + this.totalScroll <= 0){
+                this.blX = 0;
+            }
+
+            if(Game._instance.freezeScroll &&
+            this.blX + this.totalScroll + frame.w * scaling >= Game.dimensions.WIDTH){
+                this.blX = Game.dimensions.WIDTH - frame.w * scaling;
+            }
+
+            // handling map edges
             if(this.blX <= 0){
                 this.blX = 0;
             }
             if(this.blX + frame.w * scaling >= Game.dimensions.MAP_WIDTH){
                 this.blX = Game.dimensions.MAP_WIDTH - frame.w * scaling;
             }
+
+            this.draw(frame);
+        },
+        draw: function(frame){
+            this.canvasCtx.save();
+
+            var scaling = this.scale;
 
             this.canvasCtx.drawImage(Game.spritesImage,
                 //source
@@ -728,7 +750,8 @@
 
             // if last frame then clamp current frame till player reaches
             // ground.
-            if(this.currentAnimFrame == this.currentAnimData.nFrames.length - 1){
+            if(this.currentAnimFrame == this.currentAnimData.nFrames.length - 1
+            && !this.reverseAnimation){
                 this.clampCurrentFrame = true;
             }
 
@@ -753,14 +776,332 @@
         }
     };
 
-    Player.config = {
-        GRAVITY: 0.6,
+    function Enemy(canvasCtx, layerIndex, posX, posY, groundY, scale){
+        this.canvasCtx = canvasCtx;
+        this.layerIndex = layerIndex;
+
+        this.health = 5;
+
+        // bottom left position
+        this.blX = posX;
+        this.blY = posY;
+
+        this.scale = scale;
+
+        this.avgWidth = 50;
+
+        this.groundYPos = groundY;
+
+        this.vx = 0;
+        this.vy = 0;
+
+        // if facing towards right then flipped is false, else true
+        this.flipped = false;
+
+        this.currentAnimation = '';
+        this.currentAnimData;
+        this.currentAnimFrame = 0;
+        this.cycleAnimation = false;
+        this.frames = [];
+
+        this.currentMove = '';
+        this.currentMoveTime = 0;
+
+        this.currentState;
+        this.stateParams = {};
+
+        this.removed = false;
+
+        // frame time
+        this.frameTime = 0;
+
+        // state machine
+        this.state = {
+            'IDLE': {
+                idleDuration: 2000,
+                setState: function(obj){
+                    obj.currentState = 'IDLE';
+                    obj.setAnimation('IDLE');
+                    obj.cycleAnimation = true;
+                }
+            },
+            'PATROL': {
+                startX: 0,
+                patrolDistance: 0,
+                patrolMaxDistance: 200,
+                walkSpeed: Enemy.config.WALK_SPEED,
+                setState: function(obj){
+                    obj.currentState = 'PATROL';
+                    obj.state.PATROL.startX = obj.blX;
+                    obj.vx = obj.state.PATROL.walkSpeed * -1;
+                    obj.flipped = true;
+                    obj.setAnimation('WALK');
+                    obj.cycleAnimation = true;
+                }
+            },
+            'OFFENSE': {
+                idle:false,
+                engageDistance: 400,
+                rangeAttackDistance: 400,
+                minPlayerDistance: 50,
+                rollSpeed: 0.4,
+                rollDistance: 0,
+                maxRollDistance: 500,
+                idleDuration: 1000,
+                setState: function(obj){
+                    obj.vx = 0;
+                    obj.currentState = 'OFFENSE';
+                }
+            },
+            'DEFENSE': {},
+            'DEAD': {
+                blinkAmount: 5,
+                setState: function(obj){
+                    obj.currentState = 'DEAD';
+                }
+            },
+            'SPAWN': {},
+            'STUNNED': {},
+            'KNOCKDOWN': {
+                setState: function(obj){
+                    obj.currentState = 'KNOCKDOWN';
+                    obj.setAnimation('KNOCKDOWN');
+                    var direction = -1;
+                    if(obj.flipped) direction = 1;
+                    obj.vx = ENEMY.config.KNOCKDOWN_SPEED * direction;
+                }
+            }
+        };
+
+        this.init();
+    };
+
+
+    Enemy.animations = {};
+
+    // moves with their animations
+    Enemy.moves = {
+        'STAND': 'IDLE',
+        'CROUCH': 'CROUCH',
+        'WALK': 'WALK',
+        'ROLL_ATTACK': 'ROLL_ATTACK',
+        'SHOCK': 'SHOCK',
+        'KICK': 'KICK',
+        'HEAVY_PUNCH': 'HEAVY_PUNCH',
+        'TAUNT': 'TAUNT'
+    };
+
+    Enemy.config = {
         JUMP_APEX: 175,
         JUMP_DISTANCE: 200,
         JUMP_DURATION: 900,
         WALK_SPEED: 0.2
     };
 
+    Enemy.prototype = {
+        init: function(){
+            Enemy.animations = Game.spritesDef.ENEMY;
+            Enemy.animations.CROUCH.msPerFrame = 1000;
+            Enemy.animations.IDLE.msPerFrame = 1000/4;
+            Enemy.animations.WALK.msPerFrame = 1000/8;
+            Enemy.animations.SHOCK.msPerFrame = 1000/12;
+            Enemy.animations.ROLL_ATTACK.msPerFrame = 1000/8;
+            Enemy.animations.HEAVY_PUNCH.msPerFrame = 1000/8;
+            this.currentState = 'SPAWN';
+        },
+        update: function(delta){
+            this.frameTime += delta;
+            this.currentMoveTime += delta;
+            if(!this.currentMove) this.currentMoveTime = 0;
+
+            var player = Game._instance.player;
+            var rnd = Math.random();
+            var distanceWithPlayer = Math.abs(player.blX + player.totalScroll
+                - this.blX);
+
+            var direction = -1;
+            if(this.flipped) direction = 1;
+
+            switch(this.currentState){
+                case 'SPAWN':
+                    this.state.IDLE.setState(this);
+                    break;
+                case 'IDLE':
+                    if(distanceWithPlayer <
+                        this.state.OFFENSE.engageDistance){
+                        this.state.OFFENSE.setState(this);
+                    }
+                    if(rnd >= 0.5){
+                        this.state.PATROL.setState(this);
+                    }
+                    break;
+                case 'PATROL':
+                    if(distanceWithPlayer <
+                        this.state.OFFENSE.engageDistance){
+                        this.state.OFFENSE.setState(this);
+                    }
+                    this.state.PATROL.patrolDistance += this.vx * delta;
+                    if(Math.abs(this.state.PATROL.patrolDistance) >
+                        this.state.PATROL.patrolMaxDistance){
+                        this.state.PATROL.patrolDistance = 0;
+                        this.vx = -this.vx;
+                        this.flipped = !this.flipped;
+                    }
+                    break;
+                case 'OFFENSE':
+                    this.flipped = !player.flipped;
+                    direction = this.flipped? -1: 1;
+
+                    if(this.health == 0){
+                        this.state.KNOCKDOWN.setState(this);
+                    }
+
+                    switch(this.currentMove){
+                        case 'ROLL_ATTACK':
+                            
+                            // move only between 2nd and 7th frame
+                            // these are rolling frames
+                            if(this.currentAnimFrame == 2){
+                                this.vx = this.state.OFFENSE.rollSpeed * direction;
+                            }
+                            else if(this.currentAnimFrame >= 7 &&
+                                this.currentAnimFrame < 2){
+                                this.vx = 0;
+                            }
+
+                            this.state.OFFENSE.rollDistance += Math.abs(this.vx * delta);
+                            if(this.state.OFFENSE.rollDistance >
+                                this.state.OFFENSE.maxRollDistance){
+                                this.state.OFFENSE.rollDistance = 0;
+                                this.currentMove = 'STAND';
+                                if(this.animation != Enemy.moves.STAND){
+                                    this.setAnimation(Enemy.moves.STAND);
+                                }
+                                this.state.OFFENSE.idle = true;
+                            }
+                            break;
+                        case 'SHOCK':
+                            break;
+                        case 'WALK':
+                            this.vx = Enemy.config.WALK_SPEED * direction;
+                            if(distanceWithPlayer <
+                                this.state.OFFENSE.minPlayerDistance){
+                                this.currentMove = '';
+                            }
+                            break;
+                        case 'STAND':
+                            this.vx = 0;
+                            if(this.currentMoveTime >
+                            this.state.OFFENSE.idleDuration){
+                                this.state.OFFENSE.idle = false;
+                                this.currentMove = '';
+                            }
+                            break;
+                    };
+
+                    if(this.state.OFFENSE.idle){
+                        this.currentMove = 'STAND';
+                        break;
+                    }
+
+                    if(distanceWithPlayer > this.state.OFFENSE.rangeAttackDistance &&
+                        !this.currentMove){
+                        this.currentMove = 'ROLL_ATTACK';
+                        if(this.animation != Enemy.moves.ROLL_ATTACK){
+                            this.setAnimation(Enemy.moves.ROLL_ATTACK);
+                            this.msPerFrame =
+                            this.state.OFFENSE.maxRollDistance /
+                            this.state.OFFENSE.rollSpeed / 
+                            (this.currentAnimData.nFrames.length - 4);
+                        }
+                    }
+                    else if(!this.currentMove){
+                        if(rnd >= 0.5){
+                            this.currentMove = 'SHOCK';
+                            if(this.animation != Enemy.moves.SHOCK){
+                                this.setAnimation(Enemy.moves.SHOCK);
+                            }
+                        }
+                        else{
+                            this.currentMove = 'STAND';
+                            if(this.animation != Enemy.moves.STAND){
+                                this.setAnimation(Enemy.moves.STAND);
+                                this.cycleAnimation = true;
+                            }
+                        }
+
+                    }
+                    break;
+                case 'KNOCKDOWN':
+                    this.state.DEAD.setState(this);
+                case 'DEAD':
+                    this.removed = true;
+            };
+
+            this.blX += this.vx * delta + Game._instance.scrollX;
+            if(this.frameTime >= this.msPerFrame){
+                this.frameTime = 0;
+                if(this.cycleAnimation){
+                    this.currentAnimFrame =
+                    (this.currentAnimFrame + 1) % this.currentAnimData.nFrames.length;
+                }
+                else{
+                    this.currentAnimFrame += 1;
+                    if(this.currentAnimFrame + 1 >
+                    this.currentAnimData.nFrames.length){
+                        this.currentMove = '';
+                        this.currentAnimFrame = 0;
+                    }
+                }
+            }
+
+            var scaling = this.scale;
+            if(this.flipped){
+                this.frames = this.currentAnimData.fFrames;
+            }
+            else{
+                this.frames = this.currentAnimData.nFrames;
+            }
+
+            var frame = this.frames[this.currentAnimFrame];
+
+            // handling screen scroll freeze
+            if(Game._instance.freezeScroll && this.blX <= 0){
+                this.blX = 0;
+            }
+
+            if(Game._instance.freezeScroll &&
+            this.blX + frame.w * scaling >= Game.dimensions.WIDTH){
+                this.blX = Game.dimensions.WIDTH - frame.w * scaling;
+            }
+
+            this.draw(frame);
+        },
+        draw: function(frame){
+
+            var scaling = this.scale;
+
+            this.canvasCtx.save();
+
+            this.canvasCtx.drawImage(Game.spritesImage,
+                //source
+                frame.x, frame.y,
+                frame.w, frame.h,
+                //destination
+                this.blX, this.blY - frame.h * scaling,
+                scaling * frame.w, scaling * frame.h);
+
+            this.canvasCtx.restore();
+
+        },
+        setAnimation: function(animation){
+            this.animation = animation;
+            this.currentAnimData = Enemy.animations[animation];
+            this.currentAnimFrame = 0;
+            this.msPerFrame = Enemy.animations[animation].msPerFrame;
+            this.cycleAnimation = false;
+        }
+    };
 })();
 
 function onDocumentLoad(){
