@@ -39,8 +39,8 @@
     Game.dimensions = {
         WIDTH: 1024,
         HEIGHT: 576,
-        MAP_WIDTH: 800*5,
-        MAP_HEIGHT: 600
+        MAP_WIDTH: 1024*5,
+        MAP_HEIGHT: 576
     };
 
     Game.scaling = {
@@ -220,7 +220,7 @@
 
             this.player = new Player(this.layerCtx[Game.layers.PLAYER],
                                     Game.layers.PLAYER,
-                                    0 + 10,
+                                    0 + 50,
                                     Game.dimensions.HEIGHT - 40,
                                     Game.dimensions.HEIGHT - 40,
                                     Game.scaling.PLAYER);
