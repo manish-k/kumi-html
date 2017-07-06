@@ -372,6 +372,7 @@
                     Game.spritesDef['ENEMY']['HIT_STUN'] =
                     spritesDef['blanka_heavy_hit'];
                     Game.spritesDef['ENEMY']['KO'] = spritesDef['blanka_ko'];
+                    Game.spritesDef['ENEMY']['TAUNT'] = spritesDef['blanka_vic1'];
 
                     // FireBall sprites
                     Game.spritesDef['FIREBALL']['PROJECTILE'] =
@@ -393,7 +394,7 @@
             delta = currentTime - (this.time || currentTime);
             this.time = currentTime;
 
-            // Spawn enemy if not present in world 
+            // Spawn enemy if not present in world
             if(!this.enemy && !this.freezeScroll){
                 var spawnX = Math.floor(Game.dimensions.WIDTH / 2 + Math.random() *
                 (Game.dimensions.MAP_WIDTH - Game.dimensions.WIDTH / 2));
@@ -407,7 +408,7 @@
             }
 
             if(this.enemy &&
-            this.enemy.blX >= 0 && 
+            this.enemy.blX >= 0 &&
             this.enemy.blX < Game.dimensions.WIDTH){
                 this.freezeScroll = true;
             }
@@ -437,7 +438,7 @@
             // removed objects
             this.layerObjects[index] =
             this.layerObjects[index].filter(function(ele){
-                return ele.removed == false; 
+                return ele.removed == false;
             });
             // repaint each object
             for(var objIndex = 0; objIndex < this.layerObjects[index].length;
@@ -497,12 +498,12 @@
         checkCollision: function(box1, box2){
             // using axis aligned bounding box method
             var collision = false;
-            
+
             if(box1.x <= box2.x + box2.w &&
                 box1.x + box1.w > box2.x &&
                 box1.y <= box2.y + box2.h &&
                 box1.y + box1.h > box2.y){
-                collision = true;    
+                collision = true;
             }
 
             return collision;
@@ -688,7 +689,7 @@
             // Crouch animation
             Player.animations.CROUCH.msPerFrame = 1000;
             Player.animations.CROUCH.activeFrames = [];
-            
+
             // Idle animation
             Player.animations.IDLE.msPerFrame = 1000/4;
             Player.animations.IDLE.activeFrames = [];
@@ -756,7 +757,7 @@
             }
 
             if(inputState.DOWN){
-                this.crouch = true; 
+                this.crouch = true;
             }
             else if(!inputState.DOWN){
                 this.crouch = false;
@@ -894,10 +895,14 @@
                 this.handleJump(delta);
             }
             else if(this.handlingHit){
-                if(this.crouch && this.animation != 'CROUCH_HIT'){
-                    this.setAnimation('CROUCH_HIT'); 
-                } 
+                if(this.currentAnimFrame >= this.frames.length - 1){
+                    this.handlingHit = false;
+                }
+                else if(this.crouch && this.animation != 'CROUCH_HIT'){
+                    this.setAnimation('CROUCH_HIT');
+                }
                 else if(this.jumping && this.animation != 'JUMP_HIT'){
+                    this.vx = -this.vx;
                     this.setAnimation('JUMP_HIT');
                 }
                 else if(!this.crouch &&
@@ -905,10 +910,6 @@
                 this.animation != 'STAND_HIT'){
                     this.setAnimation('STAND_HIT');
                 }
-                if(this.currentAnimFrame == this.frames.length - 1){
-                    this.handlingHit = false; 
-                }
-
             }
 
             var scrollX = -this.vx * delta;
@@ -959,8 +960,8 @@
                 // Release projectile
                 if(!this.projectile){
                     var projectileStartX = this.flipped ?
-                        this.blX + this.totalScroll:
-                        this.blX + this.totalScroll + frame.w * scaling ;
+                        this.blX + this.totalScroll - this.avgWidth:
+                        this.blX + this.totalScroll + this.avgWidth;
                     // 56 pixel measured on final frame from bottom
                     var projectileStartY = this.blY - 56 * scaling;
                     this.projectile = new FireBall(this.canvasCtx,
@@ -1023,8 +1024,7 @@
 
             var scaling = this.scale;
 
-            var drawX = this.blX + this.totalScroll + this.avgWidth -
-            frame.w;
+            var drawX = this.blX + this.totalScroll - frame.w;
             var drawY = this.blY - frame.h * scaling;
 
             // Debug rectangles
@@ -1106,17 +1106,26 @@
         },
         getCurrentFrame: function(obj){
             obj.active = false;
-            obj.x = this.blX + this.totalScroll;;
+            obj.x = this.blX + this.totalScroll - this.frames[this.currentAnimFrame].w;
             obj.y = this.blY - this.frames[this.currentAnimFrame].h * this.scale;
             obj.h = this.frames[this.currentAnimFrame].h * this.scale;
             obj.w = this.frames[this.currentAnimFrame].w * this.scale;
-            
+
             if(this.currentAnimData.activeFrames.indexOf(this.currentAnimFrame)>=0)
                 obj.active = true;
         },
         handleHit: function(damage){
-            //this.health -= damage; 
-            this.handlingHit = true;
+            //this.health -= damage;
+            // no stun collision
+            if(damage == 0){
+
+            }
+
+            // if in any hit animation don't set to true
+            if(this.animation != 'STAND_HIT' &&
+            this.animation != 'CROUCH_HIT' &&
+            this.animation != 'JUMP_HIT' && damage != 0)
+                this.handlingHit = true;
         }
     };
 
@@ -1166,7 +1175,7 @@
 
                 // Projectile animation
                 FireBall.animations.PROJECTILE.msPerFrame = 1000/16;
-                FireBall.animations.PROJECTILE.activeFrames = 
+                FireBall.animations.PROJECTILE.activeFrames =
                 [0, 1, 2, 3, 4, 5, 6];
 
                 // Strike animation
@@ -1183,7 +1192,7 @@
             this.frameTime += delta;
             Game._instance.pendingUpdate[this.layerIndex] = true;
 
-            if(this.handlingHit && 
+            if(this.handlingHit &&
                 this.animation != 'PROJECTILE_STRIKE'){
                 this.setAnimation('PROJECTILE_STRIKE');
             }
@@ -1198,7 +1207,7 @@
                 // finish animation
                 this.remove();
             }
-            else if(this.animation == 'PROJECTILE_STRIKE' && 
+            else if(this.animation == 'PROJECTILE_STRIKE' &&
                 this.currentAnimFrame == this.frames.length - 1){
                 this.remove();
             }
@@ -1242,7 +1251,7 @@
         setAnimation: function(animation){
             this.animation = animation;
             this.currentAnimFrame = 0;
-            this.animationData = FireBall.animations[animation]; 
+            this.animationData = FireBall.animations[animation];
         },
         remove: function(){
                 this.removed = true;
@@ -1250,7 +1259,7 @@
         },
         getCurrentFrame: function(obj){
             obj.active = false;
-            obj.x = this.flipped ? 
+            obj.x = this.flipped ?
                     this.blX - this.frames[this.currentAnimFrame].w * this.scale :
                     this.blX;
             obj.y = this.blY - 0.5 * this.frames[this.currentAnimFrame].h * this.scale
@@ -1261,7 +1270,7 @@
                 obj.active = true;
         },
         handleHit: function(){
-            this.handlingHit = true; 
+            this.handlingHit = true;
         }
     };
 
@@ -1336,7 +1345,7 @@
                 rollSpeed: 0.4,
                 rollDistance: 0,
                 maxRollDistance: 500,
-                idleDuration: 1000,
+                idleDuration: 4000,
                 setState: function(obj){
                     obj.vx = 0;
                     obj.currentState = 'OFFENSE';
@@ -1354,8 +1363,8 @@
             'HIT_STUN': {
                 setState: function(obj){
                     obj.vx = 0;
-                    obj.currentState = 'HIT_STUN'; 
-                } 
+                    obj.currentState = 'HIT_STUN';
+                }
             },
             'KNOCKDOWN': {
                 setState: function(obj){
@@ -1418,17 +1427,21 @@
 
             // Tackle attack animation
             Enemy.animations.ROLL_ATTACK.msPerFrame = 1000/8;
-            Enemy.animations.ROLL_ATTACK.activeFrames = 
+            Enemy.animations.ROLL_ATTACK.activeFrames =
             [2, 3, 4, 5, 6, 7, 8, 9];
 
-            // Heavy punch animation 
+            // Heavy punch animation
             Enemy.animations.HEAVY_PUNCH.msPerFrame = 1000/8;
             Enemy.animations.HEAVY_PUNCH.activeFrames = [2, 3, 4];
+
+            // Taunt animation
+            Enemy.animations.TAUNT.msPerFrame = 1000/4;
+            Enemy.animations.TAUNT.activeFrames = [];
 
             // Hit stun animation
             Enemy.animations.HIT_STUN.msPerFrame = 1000/8;
             Enemy.animations.HIT_STUN.activeFrames = [];
-            
+
             // KO animation
             Enemy.animations.KO.msPerFrame = 1000/8;
             Enemy.animations.KO.activeFrames = [];
@@ -1438,10 +1451,10 @@
             var lastFFrame =
             Enemy.animations.KO.fFrames[Enemy.animations.KO.fFrames.length - 1];
             for(var i=0; i<4; ++i){
-                Enemy.animations.KO.nFrames.push({x:0, y:0, w:0, h:0}); 
-                Enemy.animations.KO.nFrames.push(lastNFrame); 
-                Enemy.animations.KO.fFrames.push({x:0, y:0, w:0, h:0}); 
-                Enemy.animations.KO.fFrames.push(lastFFrame); 
+                Enemy.animations.KO.nFrames.push({x:0, y:0, w:0, h:0});
+                Enemy.animations.KO.nFrames.push(lastNFrame);
+                Enemy.animations.KO.fFrames.push({x:0, y:0, w:0, h:0});
+                Enemy.animations.KO.fFrames.push(lastFFrame);
             }
 
             this.currentState = 'SPAWN';
@@ -1553,10 +1566,16 @@
                         }
                     }
                     else if(!this.currentMove){
-                        if(rnd >= 0.5){
+                        if(rnd >= 0.8){
                             this.currentMove = 'SHOCK';
                             if(this.animation != Enemy.moves.SHOCK){
                                 this.setAnimation(Enemy.moves.SHOCK);
+                            }
+                        }
+                        else if(rnd < 0.8 && rnd >= 0.5){
+                            this.currentMove = 'TAUNT';
+                            if(this.animation != Enemy.moves.TAUNT){
+                                this.setAnimation(Enemy.moves.TAUNT);
                             }
                         }
                         else{
@@ -1578,15 +1597,15 @@
                         this.setAnimation('HIT_STUN');
                         break;
                     }
-                    // if last frame reset hit handling status 
+                    // if last frame reset hit handling status
                     if(this.currentAnimFrame == this.frames.length - 1 &&
                         this.health != 0){
-                        this.currentState = 'OFFENSE'; 
+                        this.currentState = 'OFFENSE';
                         this.handlingHit = false;
                     }
                     if(this.currentAnimFrame == this.frames.length - 1 &&
                         this.health == 0){
-                        this.state.DEAD.setState(this); 
+                        this.state.DEAD.setState(this);
                     }
                     break;
                 case 'DEAD':
@@ -1596,7 +1615,7 @@
                         this.remove();
                     } else if(this.animation == 'KO' &&
                     this.currentAnimFrame == 4){
-                        this.vx = 0; 
+                        this.vx = 0;
                     }
                     if(this.animation != 'KO'){
                         this.setAnimation('KO');
