@@ -400,7 +400,7 @@
                 (Game.dimensions.MAP_WIDTH - Game.dimensions.WIDTH / 2));
                 this.enemy = new Enemy(this.layerCtx[Game.layers.PLAYER],
                                     Game.layers.PLAYER,
-                                    spawnX,
+                                    spawnX + this.player.totalScroll,
                                     Game.dimensions.HEIGHT - 40,
                                     Game.dimensions.HEIGHT - 40,
                                     Game.scaling.PLAYER);
@@ -1593,6 +1593,7 @@
                     break;
                 case 'HIT_STUN':
                     this.state.HIT_STUN.setState(this);
+                    this.currentMove = '';
                     if(this.animation != 'HIT_STUN'){
                         this.setAnimation('HIT_STUN');
                         break;
@@ -1600,7 +1601,8 @@
                     // if last frame reset hit handling status
                     if(this.currentAnimFrame == this.frames.length - 1 &&
                         this.health != 0){
-                        this.currentState = 'OFFENSE';
+                        // change to offense state after animation
+                        this.state.OFFENSE.setState(this);
                         this.handlingHit = false;
                     }
                     if(this.currentAnimFrame == this.frames.length - 1 &&

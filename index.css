@@ -6,6 +6,8 @@
 #game-wrapper
 {
     display: inline-block;
+    width: 1024px;
+    height: 576px;
 }
 
 canvas
@@ -36,4 +38,12 @@ canvas
 .player-layer
 {
     z-index: 3;
+}
+
+.help-text
+{
+    display: inline-block;
+    position: absolute;
+    font-size: 12px;
+    padding-left: 20px;
 }
